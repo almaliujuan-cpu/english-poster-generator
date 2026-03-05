@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "lastUpdate": "2024-01-15",
+  "textbooks": [
+    {
+      "id": "pep3",
+      "name": "人教版三年级上",
+      "units": [
+        {
+          "unitId": 1,
+          "title": "Hello!",
+          "words": ["ruler", "pencil", "eraser", "crayon", "bag"],
+          "sentences": ["Hello, I'm...", "I have a..."]
+        }
+      ]
+    }
+  ]
+}
