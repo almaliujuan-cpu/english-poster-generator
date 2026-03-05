@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语早读海报生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zcool+KuaiLe&family=Nunito:wght@400;700&display=swap');
+        body { font-family: 'Nunito', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .kid-font { font-family: 'Zcool KuaiLe', cursive; }
+        .poster-preview { background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .word-tag { display: inline-block; background: #fff; padding: 4px 12px; border-radius: 20px; margin: 4px; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border: 2px solid #ffd93d; }
+        .sentence-highlight { background: linear-gradient(120deg, #84fab0 0%, #8fd3f4 100%); padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+        @media print { .no-print { display: none !important; } .poster-preview { box-shadow: none; } }
+    </style>
+</head>
+<body class="p-4">
+    <div class="max-w-6xl mx-auto">
+        <header class="text-center mb-8 text-white">
+            <h1 class="text-4xl kid-font mb-2">🌟 英语早读海报生成器 🌟</h1>
+            <p>选择教材，自动生成精美早读海报</p>
+        </header>
+        
+        <div class="grid md:grid-cols-3 gap-6">
+            <!-- 控制面板 -->
+            <div class="bg-white rounded-3xl p-6 shadow-2xl no-print">
+                <h2 class="text-2xl kid-font text-purple-600 mb-4">⚙️ 设置</h2>
+                
+                <div class="mb-4">
+                    <label class="block font-bold mb-2">📚 教材版本</label>
+                    <select id="textbook" class="w-full p-3 border rounded-xl bg-purple-50" onchange="loadData()">
+                        <option value="pep3">人教版三年级上</option>
+                        <option value="pep4">人教版四年级上</option>
+                        <option value="pep5">人教版五年级上</option>
+                        <option value="pep6">人教版六年级上</option>
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block font-bold mb-2">📖 单元</label>
+                    <select id="unit" class="w-full p-3 border rounded-xl bg-blue-50" onchange="generatePoster()">
+                        <option value="">请选择单元</option>
+                    </select>
+                </div>
+                
+                <button onclick="generatePoster()" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-3 rounded-xl shadow-lg hover:scale-105 transition kid-font">
+                    ✨ 生成海报
+                </button>
+                
+                <div class="mt-4 p-3 bg-yellow-50 rounded-lg text-sm text-gray-600">
+                    <p>💡 <b>使用提示：</b></p>
+                    <p>1. 选择教材和单元</p>
+                    <p>2. 点击"生成海报"</p>
+                    <p>3. 下载图片或打印</p>
+                </div>
+            </div>
+            
+            <!-- 海报区域 -->
+            <div class="md:col-span-2">
+                <div id="poster" class="poster-preview rounded-3xl p-8 min-h-[600px] relative">
+                    <div class="text-center mb-6 border-b-4 border-orange-400 pb-4">
+                        <span class="bg-white px-4 py-1 rounded-full text-sm text-gray-600" id="poster-meta">请选择单元</span>
+                        <h2 class="text-4xl kid-font text-orange-600 mt-2" id="poster-title">等待生成...</h2>
+                    </div>
+                    
+                    <div class="mb-6 bg-white/80 rounded-2xl p-4">
+                        <h3 class="text-xl font-bold text-purple-600 mb-3">🎯 重点单词</h3>
+                        <div id="word-list" class="flex flex-wrap"></div>
+                    </div>
+                    
+                    <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+                        <h3 class="text-xl font-bold text-blue-600 mb-4">📖 晨读短文</h3>
+                        <div id="passage-content" class="text-lg leading-relaxed text-gray-800"></div>
+                    </div>
+                    
+                    <div class="bg-yellow-50 rounded-2xl p-4 border-2 border-yellow-300">
+                        <h3 class="text-lg font-bold text-orange-600 mb-2">🔑 重点句型</h3>
+                        <ul id="sentence-list" class="space-y-2 text-gray-700"></ul>
+                    </div>
+                    
+                    <div class="mt-6 text-center text-gray-500 text-sm border-t-2 border-dashed pt-4">
+                        <p>🌟 每日一读，英语进步看得见 🌟</p>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex gap-4 no-print justify-center">
+                    <button onclick="downloadPoster()" class="bg-green-500 text-white px-6 py-2 rounded-full font-bold hover:bg-green-600">💾 下载图片</button>
+                    <button onclick="window.print()" class="bg-blue-500 text-white px-6 py-2 rounded-full font-bold hover:bg-blue-600">🖨️ 打印</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 教材数据库（JSON格式，方便老师修改）
+        const textbookDB = {
+            "pep3": {
+                name: "人教版三年级上",
+                units: [
+                    {
+                        id: 1, title: "Hello!",
+                        words: [
+                            {en: "ruler", cn: "尺子", py: "/ˈruːlər/"},
+                            {en: "pencil", cn: "铅笔", py: "/ˈpensl/"},
+                            {en: "eraser", cn: "橡皮", py: "/ɪˈreɪsər/"},
+                            {en: "crayon", cn: "蜡笔", py: "/ˈkreɪən/"},
+                            {en: "bag", cn: "书包", py: "/bæɡ/"}
+                        ],
+                        sentences: ["Hello, I'm...", "I have a...", "What's your name?"],
+                        template: "school"
+                    },
+                    {
+                        id: 2, title: "Colours",
+                        words: [
+                            {en: "red", cn: "红色", py: "/red/"},
+                            {en: "green", cn: "绿色", py: "/ɡriːn/"},
+                            {en: "yellow", cn: "黄色", py: "/ˈjeləʊ/"},
+                            {en: "blue", cn: "蓝色", py: "/bluː/"},
+                            {en: "black", cn: "黑色", py: "/blæk/"}
+                        ],
+                        sentences: ["I see...", "Show me...", "What colour is it?"],
+                        template: "colors"
+                    }
+                ]
+            },
+            "pep4": {
+                name: "人教版四年级上",
+                units: [
+                    {
+                        id: 1, title: "My Classroom",
+                        words: [
+                            {en: "classroom", cn: "教室", py: "/ˈklɑːsruːm/"},
+                            {en: "window", cn: "窗户", py: "/ˈwɪndəʊ/"},
+                            {en: "blackboard", cn: "黑板", py: "/ˈblækbɔːd/"},
+                            {en: "light", cn: "灯", py: "/laɪt/"},
+                            {en: "picture", cn: "图画", py: "/ˈpɪktʃər/"}
+                        ],
+                        sentences: ["Where is...?", "It's near...", "Let's clean..."],
+                        template: "classroom"
+                    }
+                ]
+            }
+        };
+
+        // 短文生成模板
+        const templates = {
+            school: [
+                "Hello! I am a happy student. I have a new {w1}. It is nice. I also have a {w2} and a {w3}. Look! This is my {w4}. I put my {w5} in my bag. I love school!",
+                "Good morning! Welcome to my desk. Here is my {w1}. It is long. Can you see my {w2}? It is in my bag. I use my {w3} to draw pictures. My {w4} is red. I like my school things!"
+            ],
+            colors: [
+                "I love colors! Look at the sky. It is {w1}. The grass is {w2}. I have a {w3} apple. It is sweet. My dress is {w4}. What color do you like? I like {w5}!",
+                "Wow! So many colors! The sun is {w3}. The sea is {w4}. My cat is {w5}. I paint with {w1} and {w2}. Colors make me happy!"
+            ],
+            classroom: [
+                "This is my {w1}. It is big and clean. Look at the {w2}. It is open. The {w3} is black. The {w4} is bright. I like my {w5} on the wall. I love my classroom!",
+                "Welcome to our {w1}! Please look at the {w2}. It is clean. We write on the {w3}. Turn on the {w4}. Look at the {w5}. It is beautiful. Let's study here!"
+            ]
+        };
+
+        function loadData() {
+            const textbook = document.getElementById('textbook').value;
+            const unitSelect = document.getElementById('unit');
+            const data = textbookDB[textbook];
+            
+            unitSelect.innerHTML = '<option value="">请选择单元</option>';
+            if (data) {
+                data.units.forEach(unit => {
+                    const option = document.createElement('option');
+                    option.value = JSON.stringify(unit);
+                    option.textContent = `Unit ${unit.id} - ${unit.title}`;
+                    unitSelect.appendChild(option);
+                });
+            }
+        }
+
+        function generatePoster() {
+            const unitSelect = document.getElementById('unit');
+            if (!unitSelect.value) return;
+            
+            const unit = JSON.parse(unitSelect.value);
+            const textbook = document.getElementById('textbook');
+            const textbookName = textbook.options[textbook.selectedIndex].text;
+            
+            // 生成短文
+            const templateList = templates[unit.template] || templates.school;
+            let passage = templateList[Math.floor(Math.random() * templateList.length)];
+            
+            // 替换单词
+            unit.words.forEach((word, index) => {
+                passage = passage.replace(`{w${index+1}}`, `<span class="sentence-highlight">${word.en}</span>`);
+            });
+            
+            // 更新界面
+            document.getElementById('poster-meta').textContent = `${textbookName} · Unit ${unit.id}`;
+            document.getElementById('poster-title').textContent = unit.title;
+            
+            // 单词列表
+            const wordList = document.getElementById('word-list');
+            wordList.innerHTML = '';
+            unit.words.forEach(word => {
+                const tag = document.createElement('span');
+                tag.className = 'word-tag';
+                tag.innerHTML = `<b>${word.en}</b><br><small style="color:#666">${word.cn}</small><br><small style="color:#999;font-size:10px">${word.py}</small>`;
+                wordList.appendChild(tag);
+            });
+            
+            // 短文
+            document.getElementById('passage-content').innerHTML = `<p class="text-xl leading-loose">${passage}</p>`;
+            
+            // 句型
+            const sentenceList = document.getElementById('sentence-list');
+            sentenceList.innerHTML = '';
+            unit.sentences.forEach(sent => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="text-orange-500 mr-2">▸</span><b>${sent}</b>`;
+                sentenceList.appendChild(li);
+            });
+        }
+
+        function downloadPoster() {
+            const poster = document.getElementById('poster');
+            html2canvas(poster, {scale: 2}).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `英语早读海报_${new Date().toLocaleDateString()}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        // 初始化
+        loadData();
+    </script>
+</body>
+</html>
